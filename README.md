@@ -15,4 +15,4 @@ python Script_v2.py
 Vous Pouvez aussi modifier la population initiale en mettant seulement les deux ADN souhaités dans le fichier "ADNs.json" et en exécutant le fichier "FirstGen.py".
 
 ## Logs
-Après avoir exécuté le programme d'évolution génétique, vous pouvez observer les résultats dans le fichier "logs.txt"
+Après avoir exécuté le programme d'évolution génétique, vous pouvez observer les résultats dans le fichier "logs.txt".
