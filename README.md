@@ -3,7 +3,7 @@
 ## Utilisation
 Pour faire marcher le programme d'évolution génétique :
 
-1) Il faut d'abord build le "Leek Wars Generator" en se plaçant dans le dossier dans un terminal et en entrant la commande 
+1) Il faut d'abord build le ["Leek Wars Generator"](https://github.com/leek-wars/leek-wars-generator) en se plaçant dans le dossier dans un terminal et en entrant la commande 
 ```
 gradle jar
 ```
