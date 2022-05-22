@@ -1,0 +1,12 @@
+test/TestFightMap.java
+ test.TestFightMap
+test/TestFightFunctions.java
+ test.TestFightFunctions
+test/TestLeekFunctions.java
+ test.TestLeekFunctions
+test/DefaultUserAI.java
+ test.DefaultUserAI
+test/TestOrder.java
+ test.TestOrder
+test/GeneratorCompilation.java
+ test.GeneratorCompilation

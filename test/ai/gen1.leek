@@ -1,0 +1,2424 @@
+global ADN = "A000A203A208A000A216A210T075A000A202A208A000A217A213T116A218P000P021T113P030A105F201T165A165A201A191A000T162A010T099A143F201T165A107A000T162A000A009T099A143F201T165A191A201A107F201P221T001A226A032A000A204F039T002A032A000A204A039F227A033A031A193A000A204T159F218N001N002N165F219T166A031A033A000A008A205W168A000T096A001A038M007T166A000A014A019T117A000A204A031F038T166A031A033A000A001A010A205T170A000A228T075A220A000A001A010A205W170A000T096A001A250M010T167A030A227A143A201A191A201A107A201A226F225P223T166A031A033A000A001A010A205T169A175A030F201T166A031A033A000A002A208A000A001A010A205A254A257T168A226A227F225T166A259T161F049T166A030A178A201A106A201A175A201A226A227F225P222N001N002T165F219T166A031A033A083A000A204T157F220T167A083N161F049T167A068A030A199F201T167A103A000T162A030A201A031F200P223A188A000T162A031A033A188A000A204T159F220T166T167A000A010A001T099A000A153T162A260A031T171F200T166T167A000A010A001T099A000A153T162A069A153A030A201A188A071F201T166T167A260A031T171F200T166T167A069A188A071F201P223T166A000A005A031T171W099M200T166A033A031A193A000A204T159A069A071F201T166A033A031A189A000A204T159A069A000A002A071W099M201T166A031A000A204F038P223P222P221";
+/** Exporté le 17/05/2022, 09:44:37 **/
+
+/** TER 2/LecteurCodeGen **/
+
+/** TER 2/tabTests **/
+
+/** TER 2/funcTests **/
+
+/** TER 2/aPortee **/
+
+global enemyId;
+global myId;
+if (getEntity()==1) {enemyId = 0; myId = 1;}
+else {enemyId = 1; myId = 0;}
+
+
+function getAccessible(cell,MP){
+	var acc = [];
+	var k=0;
+	var cx = getCellX(cell);
+	var cy = getCellY(cell);
+	var tcell,gpl;
+	for (var i = 0; i <= MP; i++) {
+		for (var j = 0; j <= i; j++) {
+			if(i==0&&j==0)j++;
+			tcell = getCellFromXY(cx+(i-j),cy+j);
+			gpl = getPathLength(cell,tcell);
+			if (tcell!= null && gpl>=i && gpl<=MP && !inArray(acc,[gpl,tcell])){
+				acc[k]= [gpl,tcell];
+				k++;
+			}
+			tcell = getCellFromXY(cx+(i-j),cy-j);
+			gpl = getPathLength(cell,tcell);
+			if (tcell!= null && gpl>=i && gpl<=MP && !inArray(acc,[gpl,tcell])){
+				acc[k]= [gpl,tcell];
+				k++;
+			}
+			tcell = getCellFromXY(cx-(i-j),cy-j);
+			gpl = getPathLength(cell,tcell);
+			if (tcell!= null && gpl>=i && gpl<=MP && !inArray(acc,[gpl,tcell])){
+				acc[k]= [gpl,tcell];
+				k++;
+			}
+			tcell = getCellFromXY(cx-(i-j),cy+j);
+			gpl = getPathLength(cell,tcell);
+			if (tcell!= null && gpl>=i && gpl<=MP && !inArray(acc,[gpl,tcell])){
+				acc[k]= [gpl,tcell];
+				k++;
+			}
+		}
+	}
+	k=0;
+	var acc2 = [];
+	for (var i = 0; i <= MP; i++) {
+		for (var j in acc) {
+			if (j[0]==i) {
+				acc2[k]=j[1];
+				k++;
+			}
+		}
+	}
+	return acc2;
+}
+
+function isOnDiagonal(startCell,endCell){
+	return abs(getCellX(startCell)-getCellX(endCell))==abs(getCellY(startCell)-getCellY(endCell));
+}
+
+function canUseFromCellOnCell(startCell,endCell,porteeMax,porteeMin,isInLine,isInDiagonal,needLos){
+	var res = false;
+	if (needLos) {
+		if (isInLine) {
+			if(lineOfSight(startCell,endCell) && getCellDistance(startCell,endCell)<=porteeMax && getCellDistance(startCell,endCell)>=porteeMin && isOnSameLine(startCell,endCell)){
+				res = true;
+			}
+			else if (isInDiagonal) {
+				if(getCellDistance(startCell,endCell)<=porteeMax && getCellDistance(startCell,endCell)>=porteeMin && isOnDiagonal(startCell,endCell)){
+					res = true;
+				}
+			}
+		}
+		else if (isInDiagonal) {
+			if(getCellDistance(startCell,endCell)<=porteeMax && getCellDistance(startCell,endCell)>=porteeMin && isOnDiagonal(startCell,endCell)){
+				res = true;
+			}
+		}
+		else if(lineOfSight(startCell,endCell) && getCellDistance(startCell,endCell)<=porteeMax && getCellDistance(startCell,endCell)>=porteeMin){
+			res = true;
+		}
+	}
+	else{
+		if (isInLine) {
+			if(getCellDistance(startCell,endCell)<=porteeMax && getCellDistance(startCell,endCell)>=porteeMin && isOnSameLine(startCell,endCell)){
+				res = true;
+			}
+		}
+		else if(getCellDistance(startCell,endCell)<=porteeMax && getCellDistance(startCell,endCell)>=porteeMin){
+			res = true;
+		}
+	}
+	return res;
+}
+
+function aPorteeWeapon(startCell,endCell,weapon){
+	var isInLine = false;
+	var isInDiagonal = false;
+	var launchType = getWeaponLaunchType(weapon);
+	var area = getWeaponArea(weapon);
+	var porteeMax = getWeaponMaxRange(weapon);
+	var porteeMin = getWeaponMinRange(weapon);
+	var needLos = weaponNeedLos(weapon);
+	var cx = getCellX(endCell);
+	var cy = getCellY(endCell);
+	var i=1;
+	var acc;
+	var res = [false,0];
+	
+	if (launchType!=LAUNCH_TYPE_CIRCLE){
+		if (launchType==LAUNCH_TYPE_DIAGONAL) isInDiagonal = true;
+		else if (launchType==LAUNCH_TYPE_LINE) isInLine = true;
+		else {isInDiagonal = true; isInLine = true;}
+	}
+	
+	if (area == AREA_POINT){
+		if (canUseFromCellOnCell(startCell, endCell, porteeMax, porteeMin, isInLine, isInDiagonal, needLos)){
+			res[0] = true;
+			res[1] = endCell;
+		}
+	}
+	else if (area == AREA_CIRCLE_2){
+		acc = [getCellFromXY(cx-2,cy),
+			  getCellFromXY(cx-1,cy-1),
+			  getCellFromXY(cx-1,cy),
+			  getCellFromXY(cx-1,cy+1),
+			  getCellFromXY(cx,cy-2),
+			  getCellFromXY(cx,cy-1),
+			  getCellFromXY(cx,cy),
+			  getCellFromXY(cx,cy+1),
+			  getCellFromXY(cx,cy+2),
+			  getCellFromXY(cx+1,cy-1),
+			  getCellFromXY(cx+1,cy),
+			  getCellFromXY(cx+1,cy+1),
+			  getCellFromXY(cx+2,cy)];
+		res = [false,acc[0]];
+		while ((res[1]==null || !(canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos))) && i<13){
+			res[1]=acc[i];
+			i++;
+		}
+		if (i<13) res[0]=true;
+		else if (res[1]!=null && canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos)) {
+			res[0]=true;
+		}
+	}
+	else if (area == AREA_CIRCLE_3){
+		acc = [getCellFromXY(cx-3,cy),
+			   getCellFromXY(cx-2,cy-1),
+			   getCellFromXY(cx-2,cy),
+			   getCellFromXY(cx-2,cy+1),
+			   getCellFromXY(cx-1,cy-2),
+			   getCellFromXY(cx-1,cy-1),
+			   getCellFromXY(cx-1,cy),
+			   getCellFromXY(cx-1,cy+1),
+			   getCellFromXY(cx-1,cy+2),
+			   getCellFromXY(cx,cy-3),
+			   getCellFromXY(cx,cy-2),
+			   getCellFromXY(cx,cy-1),
+			   getCellFromXY(cx,cy),
+			   getCellFromXY(cx,cy+1),
+			   getCellFromXY(cx,cy+2),
+			   getCellFromXY(cx,cy+3),
+			   getCellFromXY(cx+1,cy-2),
+			   getCellFromXY(cx+1,cy-1),
+			   getCellFromXY(cx+1,cy),
+			   getCellFromXY(cx+1,cy+1),
+			   getCellFromXY(cx+1,cy+2),
+			   getCellFromXY(cx+2,cy-1),
+			   getCellFromXY(cx+2,cy),
+			   getCellFromXY(cx+2,cy+1),
+			   getCellFromXY(cx+3,cy)];
+		res = [false,acc[0]];
+		while ((res[1]==null || !(canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos))) && i<25){
+			res[1]=acc[i];
+			i++;
+		}
+		if (i<25) res[0]=true;
+		else if (res[1]!=null && canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos)) {
+			res[0]=true;
+		}
+	}
+	else if (area == AREA_CIRCLE_1){
+		acc = [getCellFromXY(cx-1,cy),
+			  getCellFromXY(cx,cy-1),
+			  getCellFromXY(cx,cy),
+			  getCellFromXY(cx,cy+1),
+			  getCellFromXY(cx+1,cy)];
+		res = [false,acc[0]];
+		while ((res[1]==null || !(canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos))) && i<5){
+			res[1]=acc[i];
+			i++;
+		}
+		if (i<5) res[0]=true;
+		else if (res[1]!=null && canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos)) {
+			res[0]=true;
+		}
+	}
+	else if (area == AREA_LASER_LINE){
+		if (canUseFromCellOnCell(startCell, endCell, porteeMax, porteeMin, isInLine, isInDiagonal, false)){
+			var dist;
+			var clear = true;
+			if(cx-getCellX(endCell)==0){
+				dist = cy-getCellY(endCell);
+				if (dist > 1) {
+					while (clear && i < dist) {
+						clear = !isObstacle(getCellFromXY(cx,cy-i));
+						i++;
+					}
+					res[0] = clear;
+					res[1] = endCell;
+				}
+				else if (dist < -1) {
+					while (clear && i < abs(dist)){
+						clear = !isObstacle(getCellFromXY(cx,cy+i));
+						i++;
+					}
+					res[0] = clear;
+					res[1] = endCell;
+				}
+				else {
+					res[0] = true;
+					res[1] = endCell;
+				}
+			}
+			else {
+				dist = cx-getCellX(endCell);
+				if (dist > 1) {
+					while (clear && i < dist) {
+						clear = !isObstacle(getCellFromXY(cx-i,cy));
+						i++;
+					}
+					res[0] = clear;
+					res[1] = endCell;
+				}
+				else if (dist < -1) {
+					while (clear && i < abs(dist)){
+						clear = !isObstacle(getCellFromXY(cx+i,cy));
+						i++;
+					}
+					res[0] = clear;
+					res[1] = endCell;
+				}
+				else {
+					res[0] = true;
+					res[1] = endCell;
+				}
+			}
+		}
+	}
+	else if (area == AREA_X_1){
+		acc = [getCellFromXY(cx-1,cy-1),
+			  getCellFromXY(cx-1,cy+1),
+			  getCellFromXY(cx,cy),
+			  getCellFromXY(cx+1,cy-1),
+			  getCellFromXY(cx+1,cy+1)];
+		res = [false,acc[0]];
+		while ((res[1]==null || !(canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos))) && i<5){
+			res[1]=acc[i];
+			i++;
+		}
+		if (i<5) res[0]=true;
+		else if (res[1]!=null && canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos)) {
+			res[0]=true;
+		}
+	}
+	
+	return res;
+}
+
+function aPorteeChip(startCell,endCell,chip){
+	var isInLine = false;
+	var isInDiagonal = false;
+	var launchType = getChipLaunchType(chip);
+	var area = getChipArea(chip);
+	var porteeMax = getChipMaxRange(chip);
+	var porteeMin = getChipMinRange(chip);
+	var needLos = chipNeedLos(chip);
+	var cx = getCellX(endCell);
+	var cy = getCellY(endCell);
+	var i=1;
+	var acc;
+	var res = [false,0];
+	
+	if (launchType!=LAUNCH_TYPE_CIRCLE)	isInLine = true;
+	
+	if (area == AREA_POINT){
+		if (canUseFromCellOnCell(startCell, endCell, porteeMax, porteeMin, isInLine, isInDiagonal, needLos)){
+			res[0] = true;
+			res[1] = endCell;
+		}
+	}
+	else if (area == AREA_CIRCLE_2){
+		acc = [getCellFromXY(cx-2,cy),
+			  getCellFromXY(cx-1,cy-1),
+			  getCellFromXY(cx-1,cy),
+			  getCellFromXY(cx-1,cy+1),
+			  getCellFromXY(cx,cy-2),
+			  getCellFromXY(cx,cy-1),
+			  getCellFromXY(cx,cy),
+			  getCellFromXY(cx,cy+1),
+			  getCellFromXY(cx,cy+2),
+			  getCellFromXY(cx+1,cy-1),
+			  getCellFromXY(cx+1,cy),
+			  getCellFromXY(cx+1,cy+1),
+			  getCellFromXY(cx+2,cy)];
+		res = [false,acc[0]];
+		while ((res[1]==null || !(canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos))) && i<13){
+			res[1]=acc[i];
+			i++;
+		}
+		if (i<13) res[0]=true;
+		else if (res[1]!=null && canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos)) {
+			res[0]=true;
+		}
+	}
+	else if (area == AREA_CIRCLE_3){
+		acc = [getCellFromXY(cx-3,cy),
+			   getCellFromXY(cx-2,cy-1),
+			   getCellFromXY(cx-2,cy),
+			   getCellFromXY(cx-2,cy+1),
+			   getCellFromXY(cx-1,cy-2),
+			   getCellFromXY(cx-1,cy-1),
+			   getCellFromXY(cx-1,cy),
+			   getCellFromXY(cx-1,cy+1),
+			   getCellFromXY(cx-1,cy+2),
+			   getCellFromXY(cx,cy-3),
+			   getCellFromXY(cx,cy-2),
+			   getCellFromXY(cx,cy-1),
+			   getCellFromXY(cx,cy),
+			   getCellFromXY(cx,cy+1),
+			   getCellFromXY(cx,cy+2),
+			   getCellFromXY(cx,cy+3),
+			   getCellFromXY(cx+1,cy-2),
+			   getCellFromXY(cx+1,cy-1),
+			   getCellFromXY(cx+1,cy),
+			   getCellFromXY(cx+1,cy+1),
+			   getCellFromXY(cx+1,cy+2),
+			   getCellFromXY(cx+2,cy-1),
+			   getCellFromXY(cx+2,cy),
+			   getCellFromXY(cx+2,cy+1),
+			   getCellFromXY(cx+3,cy)];
+		res = [false,acc[0]];
+		while ((res[1]==null || !(canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos))) && i<25){
+			res[1]=acc[i];
+			i++;
+		}
+		if (i<25) res[0]=true;
+		else if (res[1]!=null && canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos)) {
+			res[0]=true;
+		}
+	}
+	else if (area == AREA_CIRCLE_1){
+		acc = [getCellFromXY(cx-1,cy),
+			  getCellFromXY(cx,cy-1),
+			  getCellFromXY(cx,cy),
+			  getCellFromXY(cx,cy+1),
+			  getCellFromXY(cx+1,cy)];
+		res = [false,acc[0]];
+		while ((res[1]==null || !(canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos))) && i<5){
+			res[1]=acc[i];
+			i++;
+		}
+		if (i<5) res[0]=true;
+		else if (res[1]!=null && canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos)) {
+			res[0]=true;
+		}
+	}
+	else if (area == AREA_PLUS_2){
+		acc = [getCellFromXY(cx-2,cy),
+			  getCellFromXY(cx-1,cy),
+			  getCellFromXY(cx,cy-2),
+			  getCellFromXY(cx,cy-1),
+			  getCellFromXY(cx,cy),
+			  getCellFromXY(cx,cy+1),
+			  getCellFromXY(cx,cy+2),
+			  getCellFromXY(cx+1,cy),
+			  getCellFromXY(cx+2,cy)];
+		res = [false,acc[0]];
+		while ((res[1]==null || !(canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos))) && i<9){
+			res[1]=acc[i];
+			i++;
+		}
+		if (i<9) res[0]=true;
+		else if (res[1]!=null && canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos)) {
+			res[0]=true;
+		}
+	}
+	else if (area == AREA_PLUS_3){
+		acc = [getCellFromXY(cx-3,cy),
+			  getCellFromXY(cx-2,cy),
+			  getCellFromXY(cx-1,cy),
+			  getCellFromXY(cx,cy-3),
+			  getCellFromXY(cx,cy-2),
+			  getCellFromXY(cx,cy-1),
+			  getCellFromXY(cx,cy),
+			  getCellFromXY(cx,cy+1),
+			  getCellFromXY(cx,cy+2),
+			  getCellFromXY(cx,cy+3),
+			  getCellFromXY(cx+1,cy),
+			  getCellFromXY(cx+2,cy),
+			  getCellFromXY(cx+3,cy)];
+		res = [false,acc[0]];
+		while ((res[1]==null || !(canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos))) && i<13){
+			res[1]=acc[i];
+			i++;
+		}
+		if (i<13) res[0]=true;
+		else if (res[1]!=null && canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos)) {
+			res[0]=true;
+		}
+	}
+	else if (area == AREA_SQUARE_1){
+		acc = [getCellFromXY(cx-1,cy-1),
+			  getCellFromXY(cx-1,cy),
+			  getCellFromXY(cx-1,cy+1),
+			  getCellFromXY(cx,cy-1),
+			  getCellFromXY(cx,cy),
+			  getCellFromXY(cx,cy+1),
+			  getCellFromXY(cx+1,cy-1),
+			  getCellFromXY(cx+1,cy),
+			  getCellFromXY(cx+1,cy+1)];
+		res = [false,acc[0]];
+		while ((res[1]==null || !(canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos))) && i<9){
+			res[1]=acc[i];
+			i++;
+		}
+		if (i<9) res[0]=true;
+		else if (res[1]!=null && canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos)) {
+			res[0]=true;
+		}
+	}
+	else if (area == AREA_SQUARE_2){
+		acc = [getCellFromXY(cx-2,cy-2),
+			  getCellFromXY(cx-2,cy-1),
+			  getCellFromXY(cx-2,cy),
+			  getCellFromXY(cx-2,cy+1),
+			  getCellFromXY(cx-2,cy+2),
+			  getCellFromXY(cx-1,cy-2),
+			  getCellFromXY(cx-1,cy-1),
+			  getCellFromXY(cx-1,cy),
+			  getCellFromXY(cx-1,cy+1),
+			  getCellFromXY(cx-1,cy+2),
+			  getCellFromXY(cx,cy-2),
+			  getCellFromXY(cx,cy-1),
+			  getCellFromXY(cx,cy),
+			  getCellFromXY(cx,cy+1),
+			  getCellFromXY(cx,cy+2),
+			  getCellFromXY(cx+1,cy-2),
+			  getCellFromXY(cx+1,cy-1),
+			  getCellFromXY(cx+1,cy),
+			  getCellFromXY(cx+1,cy+1),
+			  getCellFromXY(cx+1,cy+2),
+			  getCellFromXY(cx+2,cy-2),
+			  getCellFromXY(cx+2,cy-1),
+			  getCellFromXY(cx+2,cy),
+			  getCellFromXY(cx+2,cy+1),
+			  getCellFromXY(cx+2,cy+2)];
+		res = [false,acc[0]];
+		while ((res[1]==null || !(canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos))) && i<25){
+			res[1]=acc[i];
+			i++;
+		}
+		if (i<25) res[0]=true;
+		else if (res[1]!=null && canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos)) {
+			res[0]=true;
+		}
+	}
+	else if (area == AREA_FIRST_INLINE){
+		if (canUseFromCellOnCell(startCell, endCell, porteeMax, porteeMin, isInLine, isInDiagonal, needLos)){
+			res[0] = true;
+			res[1] = endCell;
+		}
+	}
+	else if (area == AREA_X_2){
+		acc = [getCellFromXY(cx-2,cy-2),
+			  getCellFromXY(cx-2,cy+2),
+			  getCellFromXY(cx-1,cy-1),
+			  getCellFromXY(cx-1,cy+1),
+			  getCellFromXY(cx,cy),
+			  getCellFromXY(cx+1,cy-1),
+			  getCellFromXY(cx+1,cy+1),
+			  getCellFromXY(cx+2,cy-2),
+			  getCellFromXY(cx+2,cy+2)];
+		res = [false,acc[0]];
+		while ((res[1]==null || !(canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos))) && i<9){
+			res[1]=acc[i];
+			i++;
+		}
+		if (i<9) res[0]=true;
+		else if (res[1]!=null && canUseFromCellOnCell(startCell, res[1], porteeMax, porteeMin, isInLine, isInDiagonal, needLos)) {
+			res[0]=true;
+		}
+	}
+	
+	return res;
+}
+
+function peutEtreAPorteeWeapon(cellTest,endCell,weapon,mp){
+	var res = [false,null,null];
+	var ap = aPorteeWeapon(cellTest, endCell, weapon);
+	debug("ap = "+ap);
+	debug("res = "+res);
+	var i = 0;
+	var acc = getAccessible(cellTest, mp);
+	if (!ap[0] && !isEmpty(acc)) {
+		ap = aPorteeWeapon(acc[i], endCell, weapon);
+		while (i<count(acc)-1 && !ap[0]) {
+			i++;
+			ap = aPorteeWeapon(acc[i], endCell, weapon);
+		}
+		res[1] = acc[i];
+	}
+	else res[1] = cellTest;
+	res[0] = ap[0];
+	res[2] = ap[1];
+	return res;
+}
+
+function peutEtreAPorteeChip(cellTest,endCell,chip,mp){
+	var res = [false,null,null];
+	var ap = aPorteeChip(cellTest, endCell, chip);
+	var i = 0;
+	var acc = getAccessible(cellTest, mp);
+	if (!ap[0] && !isEmpty(acc)) {
+		ap = aPorteeChip(acc[i], endCell, chip);
+		while (i<count(acc)-1 && !ap[0]) {
+			i++;
+			ap = aPorteeChip(acc[i], endCell, chip);
+		}
+		res[1] = acc[i];
+	}
+	else res[1] = cellTest;
+	res[0] = ap[0];
+	res[2] = ap[1];
+	return res;
+}
+
+//------------------ Autres fonctions ------------------//
+
+function aRisque(cell1,accEnemy){
+	var res = false;
+	var i=0; 
+	while (i < count(accEnemy) && !res) {
+		res = lineOfSight(accEnemy[i], cell1) && getCellDistance(accEnemy[i], cell1)<=10;
+		i++;
+	}
+	return res;
+}
+
+function fuite(nbCellAlly,accE){
+	var res = [false,getCell()]; 
+	var accMe = getAccessible(getCell(), nbCellAlly);
+	var i=count(accMe)-1;
+	if (isEmpty(accMe)) return;
+	while (i >=0 && !res[0]) {
+		if(!aRisque(accMe[i], accE)){
+			res = [true,accMe[i]];
+		}
+		i--;
+	}
+	i=count(accMe)-1;
+	while (i >=0 && !res[0]) {
+		if (!lineOfSight(getCell(enemyId), accMe[i])) {
+			res = [true,accMe[i]];
+		}
+		i--;
+	}
+	i=count(accMe)-1;
+	while (i >=0 && !res[0]) {
+		if (!isOnSameLine(getCell(enemyId), accMe[i]) && getCellDistance(getCell(enemyId), accMe[i])>getCellDistance(getCell(enemyId), getCell())) {
+			res = [true,accMe[i]];
+		}
+		i--;
+	}
+	if(!res[0]) moveAwayFrom(enemyId);
+	else moveTowardCell(res[1]);
+	return;
+}
+
+function maxDamageAllW(valTest){
+	var tab = [];
+	var effects,cost,shield,vuln;
+	shield = getAbsoluteShield(myId);
+	vuln = getAbsoluteVulnerability(myId);
+	for (var i = 0; i < count(EnemyWeapons); i++) {
+		effects = getWeaponEffects(EnemyWeapons[i]);
+		cost = getWeaponCost(EnemyWeapons[i]);
+		tab[i]=0;
+		for (var eff in effects) {
+			if (eff[0]==1) {
+				tab[i] += (eff[2]*(1+getStrength(enemyId)/100) - shield + vuln)*floor(valTest/cost);
+			}
+			else if (eff[0]==13) {
+				tab[i] += eff[2]*(1+getMagic(enemyId)/100)*floor(valTest/cost);
+			}
+			else if (eff[0]==30) {
+				tab[i] += eff[2]*(1+getScience(enemyId)/100)*floor(valTest/cost);
+			}
+		}
+		debug("arme : "+getWeaponName(EnemyWeapons[i])+", maxDam : "+tab[i]);
+	}
+	return arrayMax(tab);
+}
+
+function maxDamageAllWMe(valTest){
+	var tab = [];
+	var effects,cost,shield,vuln;
+	shield = getAbsoluteShield(enemyId);
+	vuln = getAbsoluteVulnerability(enemyId);
+	for (var i = 0; i < count(MyWeapons); i++) {
+		effects = getWeaponEffects(MyWeapons[i]);
+		cost = getWeaponCost(MyWeapons[i]);
+		tab[i]=0;
+		for (var eff in effects) {
+			if (eff[0]==1) {
+				tab[i] += (eff[2]*(1+getStrength(myId)/100) - shield + vuln)*floor(valTest/cost);
+			}
+			else if (eff[0]==13) {
+				tab[i] += eff[2]*(1+getMagic(myId)/100)*floor(valTest/cost);
+			}
+			else if (eff[0]==30) {
+				tab[i] += eff[2]*(1+getScience(myId)/100)*floor(valTest/cost);
+			}
+		}
+		debug("arme : "+getWeaponName(MyWeapons[i])+", maxDam : "+tab[i]);
+	}
+	return arrayMax(tab);
+}
+
+function maxDamageW(weaponTest){
+	var effects,cost,shield,vuln,res;
+	shield = getAbsoluteShield(myId);
+	vuln = getAbsoluteVulnerability(myId);
+	effects = getWeaponEffects(weaponTest);
+	cost = getWeaponCost(weaponTest);
+	res = 0;
+	for (var eff in effects) {
+		if (eff[0]==1) {
+			res += (eff[2]*(1+getStrength(enemyId)/100) - shield + vuln)*floor(valTest/cost);
+		}
+		else if (eff[0]==13) {
+			res += eff[2]*(1+getMagic(enemyId)/100)*floor(valTest/cost);
+		}
+		else if (eff[0]==30) {
+			res += eff[2]*(1+getScience(enemyId)/100)*floor(valTest/cost);
+		}
+	}
+	return res;
+}
+
+function maxDamageWMe(weaponTest){
+	var effects,cost,shield,vuln,res;
+	shield = getAbsoluteShield(enemyId);
+	vuln = getAbsoluteVulnerability(enemyId);
+	effects = getWeaponEffects(weaponTest);
+	cost = getWeaponCost(weaponTest);
+	res = 0;
+	for (var eff in effects) {
+		if (eff[0]==1) {
+			res += (eff[2]*(1+getStrength(myId)/100) - shield + vuln)*floor(valTest/cost);
+		}
+		else if (eff[0]==13) {
+			res += eff[2]*(1+getMagic(myId)/100)*floor(valTest/cost);
+		}
+		else if (eff[0]==30) {
+			res += eff[2]*(1+getScience(myId)/100)*floor(valTest/cost);
+		}
+	}
+	return res;
+}
+
+function maxDamageC(chipTest){
+	var effects,cost,shield,vuln,res;
+	shield = getAbsoluteShield(myId);
+	vuln = getAbsoluteVulnerability(myId);
+	effects = getChipEffects(chipTest);
+	cost = getChipCost(chipTest);
+	res = 0;
+	for (var eff in effects) {
+		if (eff[0]==1) {
+			res += (eff[2]*(1+getStrength(enemyId)/100) - shield + vuln)*floor(valTest/cost);
+		}
+		else if (eff[0]==13) {
+			res += eff[2]*(1+getMagic(enemyId)/100)*floor(valTest/cost);
+		}
+		else if (eff[0]==30) {
+			res += eff[2]*(1+getScience(enemyId)/100)*floor(valTest/cost);
+		}
+	}
+	return res;
+}
+
+function maxDamageCMe(chipTest){
+	var effects,cost,shield,vuln,res;
+	shield = getAbsoluteShield(enemyId);
+	vuln = getAbsoluteVulnerability(enemyId);
+	effects = getChipEffects(chipTest);
+	cost = getChipCost(chipTest);
+	res = 0;
+	for (var eff in effects) {
+		if (eff[0]==1) {
+			res += (eff[2]*(1+getStrength(myId)/100) - shield + vuln)*floor(valTest/cost);
+		}
+		else if (eff[0]==13) {
+			res += eff[2]*(1+getMagic(myId)/100)*floor(valTest/cost);
+		}
+		else if (eff[0]==30) {
+			res += eff[2]*(1+getScience(myId)/100)*floor(valTest/cost);
+		}
+	}
+	return res;
+}
+
+
+global EnemyWeapons = getWeapons(enemyId);
+global EnemyChips = getChips(enemyId);
+global MyWeapons = getWeapons(getEntity());
+global MyChips = getChips(getEntity());
+global cellCible, cellTest, valTest, valTest2 =0;
+global weaponTest, chipTest = 0;
+global apw, apc, cellapw, cellapc = 0;
+global cond1, cond2, cond3 = false;
+global accE;
+
+
+function getPoison(entity){
+	var effects = arrayFlatten(getEffects(entity));
+	var posPoison = search(effects,EFFECT_POISON);
+	var poison = 0;
+	if(posPoison!=null) poison = effects[posPoison+1];
+}
+function getAbsoluteVulnerability(entity){
+	var effects = arrayFlatten(getEffects(entity));
+	var posAV = search(effects,EFFECT_ABSOLUTE_VULNERABILITY);
+	var av = 0;
+	if(posAV!=null) av = effects[posAV+1];
+}
+
+function t1(){return getTurn()==1;}
+function t2(){return getTurn()==2;}
+function t3(){return getTurn()==3;}
+function t4(){return getTurn()==4;}
+function t5(){return getTurn()==5;}
+function t6(){return getTurn()==6;}
+function t7(){return getTurn()==7;}
+function t8(){return getTurn()==8;}
+function t9(){return getTurn()==9;}
+function t10(){return getTurn()==10;}
+function t11(){return getTurn()==11;}
+function t12(){return getTurn()==12;}
+function t13(){return getTurn()==13;}
+function t14(){return getTurn()==14;}
+function t15(){return getTurn()==15;}
+function t16(){return getTurn()==16;}
+function t17(){return getTurn()==17;}
+function t18(){return getTurn()==18;}
+function t19(){return getTurn()==19;}
+function t20(){return getTurn()==20;}
+function t21(){return getTurn()==21;}
+function t22(){return getTurn()==22;}
+function t23(){return getTurn()==23;}
+function t24(){return getTurn()==24;}
+function t25(){return getTurn()==25;}
+function t26(){return getTurn()==26;}
+function t27(){return getTurn()==27;}
+function t28(){return getTurn()==28;}
+function t29(){return getTurn()==29;}
+function t30(){return getTurn()==30;}
+function t31(){return getTurn()==31;}
+function t32(){return getTurn()==32;}
+function t33(){return getTurn()==33;}
+function t34(){return getTurn()==34;}
+function t35(){return getTurn()==35;}
+function t36(){return getTurn()==36;}
+function t37(){return getTurn()==37;}
+function t38(){return getTurn()==38;}
+function t39(){return getTurn()==39;}
+function t40(){return getTurn()==40;}
+function t41(){return getTurn()==41;}
+function t42(){return getTurn()==42;}
+function t43(){return getTurn()==43;}
+function t44(){return getTurn()==44;}
+function t45(){return getTurn()==45;}
+function t46(){return getTurn()==46;}
+function t47(){return getTurn()==47;}
+function t48(){return getTurn()==48;}
+function t49(){return getTurn()==49;}
+function t50(){return getTurn()==50;}
+function t51(){return getTurn()==51;}
+function t52(){return getTurn()==52;}
+function t53(){return getTurn()==53;}
+function t54(){return getTurn()==54;}
+function t55(){return getTurn()==55;}
+function t56(){return getTurn()==56;}
+function t57(){return getTurn()==57;}
+function t58(){return getTurn()==58;}
+function t59(){return getTurn()==59;}
+function t60(){return getTurn()==60;}
+function t61(){return getTurn()==61;}
+function t62(){return getTurn()==62;}
+function t63(){return getTurn()==63;}
+function t64(){return getTurn()==64;}
+
+function isLeekAlly(cell){
+	var res = false;
+	if (isEntity(cell)) {
+		var e = getEntityOnCell(cell);
+		res = isAlly(e) && getType(e)==ENTITY_LEEK;  
+	}
+	return res;
+}
+function isLeekEnemy(cell){
+	var res = false;
+	if (isEntity(cell)) {
+		var e = getEntityOnCell(cell);
+		res = isEnemy(e) && getType(e)==ENTITY_LEEK;  
+	}
+	return res;
+}
+function isBulbAlly(cell){
+	var res = false;
+	if (isEntity(cell)) {
+		var e = getEntityOnCell(cell);
+		res = isAlly(e) && getType(e)==ENTITY_BULB;  
+	}
+	return res;
+}
+function isBulbEnemy(cell){
+	var res = false;
+	if (isEntity(cell)) {
+		var e = getEntityOnCell(cell);
+		res = isEnemy(e) && getType(e)==ENTITY_BULB;  
+	}
+	return res;
+}
+
+function t65(){return isEmptyCell(cellCible);}
+function t66(){return isLeekAlly(cellCible);}
+function t67(){return isLeekEnemy(cellCible);}
+function t68(){return isBulbAlly(cellCible);}
+function t69(){return isBulbEnemy(cellCible);}
+function t70(){return isEmptyCell(cellTest);}
+function t71(){return isLeekAlly(cellTest);}
+function t72(){return isLeekEnemy(cellTest);}
+function t73(){return isBulbAlly(cellTest);}
+function t74(){return isBulbEnemy(cellTest);}
+function t75(){return getLife(myId)<valTest;}
+function t76(){return getLife(myId)>=valTest && getLife(myId)<valTest2;}
+function t77(){return getLife(myId)>=valTest;}
+function t78(){return getStrength(myId)<valTest;}
+function t79(){return getStrength(myId)>=valTest && getStrength(myId)<valTest2;}
+function t80(){return getStrength(myId)>=valTest;}
+function t81(){return getWisdom(myId)<valTest;}
+function t82(){return getWisdom(myId)>=valTest && getWisdom(myId)<valTest2;}
+function t83(){return getWisdom(myId)>=valTest;}
+function t84(){return getAgility(myId)<valTest;}
+function t85(){return getAgility(myId)>=valTest && getAgility(myId)<valTest2;}
+function t86(){return getAgility(myId)>=valTest;}
+function t87(){return getResistance(myId)<valTest;}
+function t88(){return getResistance(myId)>=valTest && getResistance(myId)<valTest2;}
+function t89(){return getResistance(myId)>=valTest;}
+function t90(){return getScience(myId)<valTest;}
+function t91(){return getScience(myId)>=valTest && getScience(myId)<valTest2;}
+function t92(){return getScience(myId)>=valTest;}
+function t93(){return getMagic(myId)<valTest;}
+function t94(){return getMagic(myId)>=valTest && getMagic(myId)<valTest2;}
+function t95(){return getMagic(myId)>=valTest;}
+function t96(){return getMP(myId)>valTest;}
+function t97(){return getMP(myId)==valTest;}
+function t98(){return getMP(myId)<valTest;}
+function t99(){return getTP(myId)>valTest;}
+function t100(){return getTP(myId)==valTest;}
+function t101(){return getTP(myId)<valTest;}
+function t102(){return getAbsoluteShield(myId)<valTest;}
+function t103(){return getAbsoluteShield(myId)>=valTest && getAbsoluteShield(myId)<valTest2;}
+function t104(){return getAbsoluteShield(myId)>=valTest;}
+function t105(){return getAbsoluteVulnerability(myId)<valTest;}
+function t106(){return getAbsoluteVulnerability(myId)>=valTest && getAbsoluteVulnerability(myId)<valTest2;}
+function t107(){return getAbsoluteVulnerability(myId)>=valTest;}
+function t108(){return getDamageReturn(myId)<valTest;}
+function t109(){return getDamageReturn(myId)>=valTest && getDamageReturn(myId)<valTest2;}
+function t110(){return getDamageReturn(myId)>=valTest;}
+function t111(){return getPoison(myId)<valTest;}
+function t112(){return getPoison(myId)>=valTest && getPoison(myId)<valTest2;}
+function t113(){return getPoison(myId)>=valTest;}
+function t114(){return getLife(enemyId)<valTest;}
+function t115(){return getLife(enemyId)>=valTest && getLife(enemyId)<valTest2;}
+function t116(){return getLife(enemyId)>=valTest;}
+function t117(){return getStrength(enemyId)<valTest;}
+function t118(){return getStrength(enemyId)>=valTest && getStrength(enemyId)<valTest2;}
+function t119(){return getStrength(enemyId)>=valTest;}
+function t120(){return getWisdom(enemyId)<valTest;}
+function t121(){return getWisdom(enemyId)>=valTest && getWisdom(enemyId)<valTest2;}
+function t122(){return getWisdom(enemyId)>=valTest;}
+function t123(){return getAgility(enemyId)<valTest;}
+function t124(){return getAgility(enemyId)>=valTest && getAgility(enemyId)<valTest2;}
+function t125(){return getAgility(enemyId)>=valTest;}
+function t126(){return getResistance(enemyId)<valTest;}
+function t127(){return getResistance(enemyId)>=valTest && getResistance(enemyId)<valTest2;}
+function t128(){return getResistance(enemyId)>=valTest;}
+function t129(){return getScience(enemyId)<valTest;}
+function t130(){return getScience(enemyId)>=valTest && getScience(enemyId)<valTest2;}
+function t131(){return getScience(enemyId)>=valTest;}
+function t132(){return getMagic(enemyId)<valTest;}
+function t133(){return getMagic(enemyId)>=valTest && getMagic(enemyId)<valTest2;}
+function t134(){return getMagic(enemyId)>=valTest;}
+function t135(){return getMP(enemyId)>valTest;}
+function t136(){return getMP(enemyId)==valTest;}
+function t137(){return getMP(enemyId)<valTest;}
+function t138(){return getTP(enemyId)>valTest;}
+function t139(){return getTP(enemyId)==valTest;}
+function t140(){return getTP(enemyId)<valTest;}
+function t141(){return getAbsoluteShield(enemyId)<valTest;}
+function t142(){return getAbsoluteShield(enemyId)>=valTest && getAbsoluteShield(enemyId)<valTest2;}
+function t143(){return getAbsoluteShield(enemyId)>=valTest;}
+function t144(){return getAbsoluteVulnerability(enemyId)<valTest;}
+function t145(){return getAbsoluteVulnerability(enemyId)>=valTest && getAbsoluteVulnerability(enemyId)<valTest2;}
+function t146(){return getAbsoluteVulnerability(enemyId)>=valTest;}
+function t147(){return getDamageReturn(enemyId)<valTest;}
+function t148(){return getDamageReturn(enemyId)>=valTest && getDamageReturn(enemyId)<valTest2;}
+function t149(){return getDamageReturn(enemyId)>=valTest;}
+function t150(){return getPoison(enemyId)<valTest;}
+function t151(){return getPoison(enemyId)>=valTest && getPoison(enemyId)<valTest2;}
+function t152(){return getPoison(enemyId)>=valTest;}
+function t153(){var ap = aPorteeWeapon(cellTest, cellCible, weaponTest); apw = ap[1]; return ap[0];}
+function t154(){var ap = aPorteeWeapon(cellCible, cellTest, weaponTest); apw = ap[1]; return ap[0];}
+function t155(){var ap = aPorteeChip(cellTest, cellCible, chipTest); apc = ap[1]; return ap[0];}
+function t156(){var ap = aPorteeChip(cellCible, cellTest, chipTest); apc = ap[1]; return ap[0];}
+function t157(){var peap = peutEtreAPorteeWeapon(cellTest, cellCible, weaponTest, valTest); cellapw = peap[1]; apw = peap[2]; debug("APW!!!"); mark(cellapw,1);  return peap[0];}
+function t158(){var peap = peutEtreAPorteeWeapon(cellCible, cellTest, weaponTest, valTest); cellapw = peap[1]; apw = peap[2]; return peap[0];}
+function t159(){var peap = peutEtreAPorteeChip(cellTest, cellCible, chipTest, valTest); cellapc = peap[1]; apc = peap[2]; return peap[0];}
+function t160(){var peap = peutEtreAPorteeChip(cellCible, cellTest, chipTest, valTest); cellapc = peap[1]; apc = peap[2]; return peap[0];}
+function t161(){return getWeapon(myId)==weaponTest;}
+function t162(){return getCooldown(chipTest,myId)==valTest;}
+function t163(){return getWeapon(enemyId)==weaponTest;}
+function t164(){return getCooldown(chipTest,enemyId)==valTest;}
+function t165(){return cond1;}
+function t166(){return cond2;}
+function t167(){return cond3;}
+function t168(){return getCellDistance(cellTest, cellCible)>valTest;}
+function t169(){return getCellDistance(cellTest, cellCible)==valTest;}
+function t170(){return getCellDistance(cellTest, cellCible)<valTest;}
+function t171(){return canUseWeaponOnCell(weaponTest,cellCible);}
+function t172(){return canUseChipOnCell(chipTest,cellCible);} global tabTests = [true,t1
+,t2
+,t3
+,t4
+,t5
+,t6
+,t7
+,t8
+,t9
+,t10
+,t11
+,t12
+,t13
+,t14
+,t15
+,t16
+,t17
+,t18
+,t19
+,t20
+,t21
+,t22
+,t23
+,t24
+,t25
+,t26
+,t27
+,t28
+,t29
+,t30
+,t31
+,t32
+,t33
+,t34
+,t35
+,t36
+,t37
+,t38
+,t39
+,t40
+,t41
+,t42
+,t43
+,t44
+,t45
+,t46
+,t47
+,t48
+,t49
+,t50
+,t51
+,t52
+,t53
+,t54
+,t55
+,t56
+,t57
+,t58
+,t59
+,t60
+,t61
+,t62
+,t63
+,t64
+,t65
+,t66
+,t67
+,t68
+,t69
+,t70
+,t71
+,t72
+,t73
+,t74
+,t75
+,t76
+,t77
+,t78
+,t79
+,t80
+,t81
+,t82
+,t83
+,t84
+,t85
+,t86
+,t87
+,t88
+,t89
+,t90
+,t91
+,t92
+,t93
+,t94
+,t95
+,t96
+,t97
+,t98
+,t99
+,t100
+,t101
+,t102
+,t103
+,t104
+,t105
+,t106
+,t107
+,t108
+,t109
+,t110
+,t111
+,t112
+,t113
+,t114
+,t115
+,t116
+,t117
+,t118
+,t119
+,t120
+,t121
+,t122
+,t123
+,t124
+,t125
+,t126
+,t127
+,t128
+,t129
+,t130
+,t131
+,t132
+,t133
+,t134
+,t135
+,t136
+,t137
+,t138
+,t139
+,t140
+,t141
+,t142
+,t143
+,t144
+,t145
+,t146
+,t147
+,t148
+,t149
+,t150
+,t151
+,t152
+,t153
+,t154
+,t155
+,t156
+,t157
+,t158
+,t159
+,t160
+,t161
+,t162
+,t163
+,t164
+,t165
+,t166
+,t167
+,t168
+,t169										 
+,t170
+,t171
+,t172
+,inArray(MyWeapons,WEAPON_AXE)
+,inArray(MyWeapons,WEAPON_BAZOOKA)
+,inArray(MyWeapons,WEAPON_B_LASER)
+,inArray(MyWeapons,WEAPON_BROADSWORD)
+,inArray(MyWeapons,WEAPON_DARK_KATANA)
+,inArray(MyWeapons,WEAPON_DESTROYER)
+,inArray(MyWeapons,WEAPON_DOUBLE_GUN)
+,inArray(MyWeapons,WEAPON_ELECTRISOR)
+,inArray(MyWeapons,WEAPON_EXPLORER_RIFLE)
+,inArray(MyWeapons,WEAPON_FLAME_THROWER)
+,inArray(MyWeapons,WEAPON_GAZOR)
+,inArray(MyWeapons,WEAPON_GRENADE_LAUNCHER)
+,inArray(MyWeapons,WEAPON_ILLICIT_GRENADE_LAUNCHER)
+,inArray(MyWeapons,WEAPON_J_LASER)
+,inArray(MyWeapons,WEAPON_KATANA)
+,inArray(MyWeapons,WEAPON_LASER)
+,inArray(MyWeapons,WEAPON_LIGHTNINGER)
+,inArray(MyWeapons,WEAPON_MACHINE_GUN)
+,inArray(MyWeapons,WEAPON_MAGNUM)
+,inArray(MyWeapons,WEAPON_M_LASER)
+,inArray(MyWeapons,WEAPON_MYSTERIOUS_ELECTRISOR)
+,inArray(MyWeapons,WEAPON_NEUTRINO)
+,inArray(MyWeapons,WEAPON_PISTOL)
+,inArray(MyWeapons,WEAPON_REVOKED_M_LASER)
+,inArray(MyWeapons,WEAPON_RHINO)
+,inArray(MyWeapons,WEAPON_RIFLE)
+,inArray(MyWeapons,WEAPON_SHOTGUN)
+,inArray(MyWeapons,WEAPON_UNBRIDLED_GAZOR)
+,inArray(MyChips,CHIP_ACCELERATION)
+,inArray(MyChips,CHIP_ADRENALINE)
+,inArray(MyChips,CHIP_ALTERATION)
+,inArray(MyChips,CHIP_ANTIDOTE)
+,inArray(MyChips,CHIP_ARMOR)
+,inArray(MyChips,CHIP_ARMORING)
+,inArray(MyChips,CHIP_ARSENIC)
+,inArray(MyChips,CHIP_BALL_AND_CHAIN)
+,inArray(MyChips,CHIP_BANDAGE)
+,inArray(MyChips,CHIP_BARK)
+,inArray(MyChips,CHIP_BOXING_GLOVE)
+,inArray(MyChips,CHIP_BRAINWASHING)
+,inArray(MyChips,CHIP_BRAMBLE)
+,inArray(MyChips,CHIP_BURNING)
+,inArray(MyChips,CHIP_CARAPACE)
+,inArray(MyChips,CHIP_COLLAR)
+,inArray(MyChips,CHIP_COVETOUSNESS)
+,inArray(MyChips,CHIP_COVID)
+,inArray(MyChips,CHIP_CRUSHING)
+,inArray(MyChips,CHIP_CURE)
+,inArray(MyChips,CHIP_DESINTEGRATION)
+,inArray(MyChips,CHIP_DEVIL_STRIKE)
+,inArray(MyChips,CHIP_DOME)
+,inArray(MyChips,CHIP_DOPING)
+,inArray(MyChips,CHIP_DRIP)
+,inArray(MyChips,CHIP_ELEVATION)
+,inArray(MyChips,CHIP_FEROCITY)
+,inArray(MyChips,CHIP_FERTILIZER)
+,inArray(MyChips,CHIP_FIRE_BULB)
+,inArray(MyChips,CHIP_FLAME)
+,inArray(MyChips,CHIP_FLASH)
+,inArray(MyChips,CHIP_FORTRESS)
+,inArray(MyChips,CHIP_FRACTURE)
+,inArray(MyChips,CHIP_GRAPPLE)
+,inArray(MyChips,CHIP_HEALER_BULB)
+,inArray(MyChips,CHIP_HELMET)
+,inArray(MyChips,CHIP_ICE)
+,inArray(MyChips,CHIP_ICEBERG)
+,inArray(MyChips,CHIP_ICED_BULB)
+,inArray(MyChips,CHIP_INVERSION)
+,inArray(MyChips,CHIP_JUMP)
+,inArray(MyChips,CHIP_KNOWLEDGE)
+,inArray(MyChips,CHIP_LEATHER_BOOTS)
+,inArray(MyChips,CHIP_LIBERATION)
+,inArray(MyChips,CHIP_LIGHTNING)
+,inArray(MyChips,CHIP_LIGHTNING_BULB)
+,inArray(MyChips,CHIP_LOAM)
+,inArray(MyChips,CHIP_MANUMISSION)
+,inArray(MyChips,CHIP_METALLIC_BULB)
+,inArray(MyChips,CHIP_METEORITE)
+,inArray(MyChips,CHIP_MIRROR)
+,inArray(MyChips,CHIP_MOTIVATION)
+,inArray(MyChips,CHIP_MUTATION)
+,inArray(MyChips,CHIP_PEBBLE)
+,inArray(MyChips,CHIP_PLAGUE)
+,inArray(MyChips,CHIP_PLASMA)
+,inArray(MyChips,CHIP_PRECIPITATION)
+,inArray(MyChips,CHIP_PROTEIN)
+,inArray(MyChips,CHIP_PUNISHMENT)
+,inArray(MyChips,CHIP_PUNY_BULB)
+,inArray(MyChips,CHIP_RAGE)
+,inArray(MyChips,CHIP_RAMPART)
+,inArray(MyChips,CHIP_REFLEXES)
+,inArray(MyChips,CHIP_REGENERATION)
+,inArray(MyChips,CHIP_REMISSION)
+,inArray(MyChips,CHIP_REPOTTING)
+,inArray(MyChips,CHIP_RESURRECTION)
+,inArray(MyChips,CHIP_ROCK)
+,inArray(MyChips,CHIP_ROCKFALL)
+,inArray(MyChips,CHIP_ROCKY_BULB)
+,inArray(MyChips,CHIP_SAVANT_BULB)
+,inArray(MyChips,CHIP_SERUM)
+,inArray(MyChips,CHIP_SEVEN_LEAGUE_BOOTS)
+,inArray(MyChips,CHIP_SHIELD)
+,inArray(MyChips,CHIP_SHOCK)
+,inArray(MyChips,CHIP_SLOW_DOWN)
+,inArray(MyChips,CHIP_SOLIDIFICATION)
+,inArray(MyChips,CHIP_SOPORIFIC)
+,inArray(MyChips,CHIP_SPARK)
+,inArray(MyChips,CHIP_STALACTITE)
+,inArray(MyChips,CHIP_STEROID)
+,inArray(MyChips,CHIP_STRETCHING)
+,inArray(MyChips,CHIP_TACTICIAN_BULB)
+,inArray(MyChips,CHIP_TELEPORTATION)
+,inArray(MyChips,CHIP_THERAPY)
+,inArray(MyChips,CHIP_THORN)
+,inArray(MyChips,CHIP_TOXIN)
+,inArray(MyChips,CHIP_TRANQUILIZER)
+,inArray(MyChips,CHIP_TRANSMUTATION)
+,inArray(MyChips,CHIP_VACCINE)
+,inArray(MyChips,CHIP_VAMPIRIZATION)
+,inArray(MyChips,CHIP_VENOM)
+,inArray(MyChips,CHIP_WALL)
+,inArray(MyChips,CHIP_WARM_UP)
+,inArray(MyChips,CHIP_WHIP)
+,inArray(MyChips,CHIP_WINGED_BOOTS)
+,inArray(MyChips,CHIP_WIZARD_BULB)
+,inArray(MyChips,CHIP_WIZARDRY)
+,inArray(EnemyWeapons,WEAPON_AXE)
+,inArray(EnemyWeapons,WEAPON_BAZOOKA)
+,inArray(EnemyWeapons,WEAPON_B_LASER)
+,inArray(EnemyWeapons,WEAPON_BROADSWORD)
+,inArray(EnemyWeapons,WEAPON_DARK_KATANA)
+,inArray(EnemyWeapons,WEAPON_DESTROYER)
+,inArray(EnemyWeapons,WEAPON_DOUBLE_GUN)
+,inArray(EnemyWeapons,WEAPON_ELECTRISOR)
+,inArray(EnemyWeapons,WEAPON_EXPLORER_RIFLE)
+,inArray(EnemyWeapons,WEAPON_FLAME_THROWER)
+,inArray(EnemyWeapons,WEAPON_GAZOR)
+,inArray(EnemyWeapons,WEAPON_GRENADE_LAUNCHER)
+,inArray(EnemyWeapons,WEAPON_ILLICIT_GRENADE_LAUNCHER)
+,inArray(EnemyWeapons,WEAPON_J_LASER)
+,inArray(EnemyWeapons,WEAPON_KATANA)
+,inArray(EnemyWeapons,WEAPON_LASER)
+,inArray(EnemyWeapons,WEAPON_LIGHTNINGER)
+,inArray(EnemyWeapons,WEAPON_MACHINE_GUN)
+,inArray(EnemyWeapons,WEAPON_MAGNUM)
+,inArray(EnemyWeapons,WEAPON_M_LASER)
+,inArray(EnemyWeapons,WEAPON_MYSTERIOUS_ELECTRISOR)
+,inArray(EnemyWeapons,WEAPON_NEUTRINO)
+,inArray(EnemyWeapons,WEAPON_PISTOL)
+,inArray(EnemyWeapons,WEAPON_REVOKED_M_LASER)
+,inArray(EnemyWeapons,WEAPON_RHINO)
+,inArray(EnemyWeapons,WEAPON_RIFLE)
+,inArray(EnemyWeapons,WEAPON_SHOTGUN)
+,inArray(EnemyWeapons,WEAPON_UNBRIDLED_GAZOR)
+,inArray(EnemyChips,CHIP_ACCELERATION)
+,inArray(EnemyChips,CHIP_ADRENALINE)
+,inArray(EnemyChips,CHIP_ALTERATION)
+,inArray(EnemyChips,CHIP_ANTIDOTE)
+,inArray(EnemyChips,CHIP_ARMOR)
+,inArray(EnemyChips,CHIP_ARMORING)
+,inArray(EnemyChips,CHIP_ARSENIC)
+,inArray(EnemyChips,CHIP_BALL_AND_CHAIN)
+,inArray(EnemyChips,CHIP_BANDAGE)
+,inArray(EnemyChips,CHIP_BARK)
+,inArray(EnemyChips,CHIP_BOXING_GLOVE)
+,inArray(EnemyChips,CHIP_BRAINWASHING)
+,inArray(EnemyChips,CHIP_BRAMBLE)
+,inArray(EnemyChips,CHIP_BURNING)
+,inArray(EnemyChips,CHIP_CARAPACE)
+,inArray(EnemyChips,CHIP_COLLAR)
+,inArray(EnemyChips,CHIP_COVETOUSNESS)
+,inArray(EnemyChips,CHIP_COVID)
+,inArray(EnemyChips,CHIP_CRUSHING)
+,inArray(EnemyChips,CHIP_CURE)
+,inArray(EnemyChips,CHIP_DESINTEGRATION)
+,inArray(EnemyChips,CHIP_DEVIL_STRIKE)
+,inArray(EnemyChips,CHIP_DOME)
+,inArray(EnemyChips,CHIP_DOPING)
+,inArray(EnemyChips,CHIP_DRIP)
+,inArray(EnemyChips,CHIP_ELEVATION)
+,inArray(EnemyChips,CHIP_FEROCITY)
+,inArray(EnemyChips,CHIP_FERTILIZER)
+,inArray(EnemyChips,CHIP_FIRE_BULB)
+,inArray(EnemyChips,CHIP_FLAME)
+,inArray(EnemyChips,CHIP_FLASH)
+,inArray(EnemyChips,CHIP_FORTRESS)
+,inArray(EnemyChips,CHIP_FRACTURE)
+,inArray(EnemyChips,CHIP_GRAPPLE)
+,inArray(EnemyChips,CHIP_HEALER_BULB)
+,inArray(EnemyChips,CHIP_HELMET)
+,inArray(EnemyChips,CHIP_ICE)
+,inArray(EnemyChips,CHIP_ICEBERG)
+,inArray(EnemyChips,CHIP_ICED_BULB)
+,inArray(EnemyChips,CHIP_INVERSION)
+,inArray(EnemyChips,CHIP_JUMP)
+,inArray(EnemyChips,CHIP_KNOWLEDGE)
+,inArray(EnemyChips,CHIP_LEATHER_BOOTS)
+,inArray(EnemyChips,CHIP_LIBERATION)
+,inArray(EnemyChips,CHIP_LIGHTNING)
+,inArray(EnemyChips,CHIP_LIGHTNING_BULB)
+,inArray(EnemyChips,CHIP_LOAM)
+,inArray(EnemyChips,CHIP_MANUMISSION)
+,inArray(EnemyChips,CHIP_METALLIC_BULB)
+,inArray(EnemyChips,CHIP_METEORITE)
+,inArray(EnemyChips,CHIP_MIRROR)
+,inArray(EnemyChips,CHIP_MOTIVATION)
+,inArray(EnemyChips,CHIP_MUTATION)
+,inArray(EnemyChips,CHIP_PEBBLE)
+,inArray(EnemyChips,CHIP_PLAGUE)
+,inArray(EnemyChips,CHIP_PLASMA)
+,inArray(EnemyChips,CHIP_PRECIPITATION)
+,inArray(EnemyChips,CHIP_PROTEIN)
+,inArray(EnemyChips,CHIP_PUNISHMENT)
+,inArray(EnemyChips,CHIP_PUNY_BULB)
+,inArray(EnemyChips,CHIP_RAGE)
+,inArray(EnemyChips,CHIP_RAMPART)
+,inArray(EnemyChips,CHIP_REFLEXES)
+,inArray(EnemyChips,CHIP_REGENERATION)
+,inArray(EnemyChips,CHIP_REMISSION)
+,inArray(EnemyChips,CHIP_REPOTTING)
+,inArray(EnemyChips,CHIP_RESURRECTION)
+,inArray(EnemyChips,CHIP_ROCK)
+,inArray(EnemyChips,CHIP_ROCKFALL)
+,inArray(EnemyChips,CHIP_ROCKY_BULB)
+,inArray(EnemyChips,CHIP_SAVANT_BULB)
+,inArray(EnemyChips,CHIP_SERUM)
+,inArray(EnemyChips,CHIP_SEVEN_LEAGUE_BOOTS)
+,inArray(EnemyChips,CHIP_SHIELD)
+,inArray(EnemyChips,CHIP_SHOCK)
+,inArray(EnemyChips,CHIP_SLOW_DOWN)
+,inArray(EnemyChips,CHIP_SOLIDIFICATION)
+,inArray(EnemyChips,CHIP_SOPORIFIC)
+,inArray(EnemyChips,CHIP_SPARK)
+,inArray(EnemyChips,CHIP_STALACTITE)
+,inArray(EnemyChips,CHIP_STEROID)
+,inArray(EnemyChips,CHIP_STRETCHING)
+,inArray(EnemyChips,CHIP_TACTICIAN_BULB)
+,inArray(EnemyChips,CHIP_TELEPORTATION)
+,inArray(EnemyChips,CHIP_THERAPY)
+,inArray(EnemyChips,CHIP_THORN)
+,inArray(EnemyChips,CHIP_TOXIN)
+,inArray(EnemyChips,CHIP_TRANQUILIZER)
+,inArray(EnemyChips,CHIP_TRANSMUTATION)
+,inArray(EnemyChips,CHIP_VACCINE)
+,inArray(EnemyChips,CHIP_VAMPIRIZATION)
+,inArray(EnemyChips,CHIP_VENOM)
+,inArray(EnemyChips,CHIP_WALL)
+,inArray(EnemyChips,CHIP_WARM_UP)
+,inArray(EnemyChips,CHIP_WHIP)
+,inArray(EnemyChips,CHIP_WINGED_BOOTS)
+,inArray(EnemyChips,CHIP_WIZARD_BULB)
+,inArray(EnemyChips,CHIP_WIZARDRY)];
+/** TER 2/tabActions **/
+
+/** TER 2/funcActions **/
+
+ 
+/** TER 2/IA_Bulbes **/
+
+
+function usePBulbe(){
+    var path = getPath(getCell(), getCell(getNearestEnemy()));
+	if(!isEmpty(path)){
+		if(lineOfSight(getCell(),path[2]))
+			summon(CHIP_PUNY_BULB,path[2],iaChetif);
+		else summon(CHIP_PUNY_BULB,path[1],iaChetif);
+	}
+}
+
+function useIBulbe(){
+    var path = getPath(getCell(), getCell(getNearestEnemy()));
+	if(!isEmpty(path)) summon(CHIP_ICED_BULB,path[1],iaGlace);
+}
+
+function useRBulbe(){
+    var path = getPath(getCell(), getCell(getNearestEnemy()));
+	if(!isEmpty(path)){
+		if(lineOfSight(getCell(),path[2]))
+			summon(CHIP_ROCKY_BULB,path[2],iaRock);
+		else summon(CHIP_ROCKY_BULB,path[1],iaRock);
+	}
+}
+
+function useHBulbe(){
+	var cx = getCellX(getCell());
+	var cy = getCellY(getCell());
+	var acc = [getCellFromXY(cx-2,cy),
+			  getCellFromXY(cx-1,cy-1),
+			  getCellFromXY(cx-1,cy),
+			  getCellFromXY(cx-1,cy+1),
+			  getCellFromXY(cx,cy-2),
+			  getCellFromXY(cx,cy-1),
+			  getCellFromXY(cx,cy),
+			  getCellFromXY(cx,cy+1),
+			  getCellFromXY(cx,cy+2),
+			  getCellFromXY(cx+1,cy-1),
+			  getCellFromXY(cx+1,cy),
+			  getCellFromXY(cx+1,cy+1),
+			  getCellFromXY(cx+2,cy)];
+	var cell;
+	for (var i in acc) {
+		if (i!=null && isEmptyCell(i)) cell=i;
+	}
+	if(cell!=null) summon(CHIP_HEALER_BULB,cell,iaHealer);
+}
+
+function iaChetif(){
+    var summ = getSummoner();
+	var Enemy = enemyId;
+	if (getCellDistance(getCell(getEntity()),getCell(Enemy))-getMP()<6) {
+		moveToward(Enemy);
+	}
+	else while (getMP()>0 && getCellDistance(getCell(getEntity()),getCell(Enemy))>10) {
+		moveToward(Enemy,1);
+	}
+	useChip(CHIP_PEBBLE,Enemy);
+	useChip(CHIP_HELMET, getEntity());
+	useChip(CHIP_PROTEIN, getEntity());
+}
+
+function iaGlace(){
+	var summ = getSummoner();
+	var Enemy = enemyId;
+	var tp = getTP();
+	var aps = peutEtreAPorteeChip(getCell(), getCell(Enemy), CHIP_STALACTITE, getMP());
+	var apice = peutEtreAPorteeChip(getCell(), getCell(Enemy), CHIP_ICE, getMP());
+	if (tp>6) {
+		var api = peutEtreAPorteeChip(getCell(), getCell(Enemy), CHIP_ICEBERG, getMP());
+		if (api[0]){
+			if (getCooldown(CHIP_ICEBERG)==0) {
+				moveTowardCell(api[1]);
+				useChipOnCell(CHIP_ICEBERG, api[2]);
+			}
+			else if (aps[0]) {
+				moveTowardCell(aps[1]);
+				useChip(CHIP_STALACTITE, Enemy);
+			}
+			else if (getCooldown(CHIP_ICEBERG)>1) {
+				moveAwayFrom(Enemy);
+			}
+		}
+		else if (aps[0]) {
+			if (getCooldown(CHIP_STALACTITE)==0) {
+				moveTowardCell(aps[1]);
+				useChip(CHIP_STALACTITE, Enemy);
+			}
+			else if (getCooldown(CHIP_ICEBERG)>1) {
+				moveAwayFrom(Enemy);
+			}
+		}
+		else if (tp>7&&apice[0]) {
+			moveTowardCell(apice[1]);
+			useChip(CHIP_ICE, Enemy);
+		}
+	}
+	if (tp==6) {
+		if (aps[0]) {
+			if (getCooldown(CHIP_STALACTITE)==0) {
+				moveTowardCell(aps[1]);
+				useChip(CHIP_STALACTITE, Enemy);
+			}
+			else if (getCooldown(CHIP_STALACTITE)>1) {
+				moveAwayFrom(Enemy);
+			}
+		}
+	}
+	if (tp==5||tp==4){
+		moveToward(Enemy);
+		useChip(CHIP_ICE, Enemy);
+	}	
+	while (getCellDistance(getCell(),getCell(Enemy))>5&&getMP()>0) {
+		moveToward(Enemy,1);
+	}
+}
+
+function iaRock(){
+	var summ = getSummoner();
+	var Enemy = enemyId;
+	var tp = getTP();
+	var apr = peutEtreAPorteeChip(getCell(), getCell(Enemy), CHIP_ROCK, getMP());
+	var app = peutEtreAPorteeChip(getCell(), getCell(Enemy), CHIP_PEBBLE, getMP());
+	if (tp>4) {
+		var aprf = peutEtreAPorteeChip(getCell(), getCell(Enemy), CHIP_ROCKFALL, getMP());
+		if (aprf[0]){
+			moveTowardCell(aprf[1]);
+			useChipOnCell(CHIP_ROCKFALL, aprf[2]);
+		}
+		else if (apr[0]) {
+			moveTowardCell(apr[1]);
+			useChip(CHIP_ROCK, Enemy);
+		}
+		app = peutEtreAPorteeChip(getCell(), getCell(Enemy), CHIP_PEBBLE, getMP());
+	}
+	if (app[0]&&getTP()>1) {
+			moveTowardCell(app[1]);
+			useChip(CHIP_PEBBLE, Enemy);
+		}
+	useChip(CHIP_HELMET, getEntity());
+	while (getCellDistance(getCell(),getCell(Enemy))>5&&getMP()>0) {
+		moveToward(Enemy,1);
+	}
+	while (getCellDistance(getCell(),getCell(Enemy))<3&&getMP()>0) {
+		moveAwayFrom(Enemy,1);
+	}
+}
+
+function iaHealer(){
+	var summ = getSummoner();
+	var Enemy = enemyId;
+	var tp = getTP();
+	while(getCellDistance(getCell(), getCell(summ))<6 && getMP()>0){
+		moveAwayFrom(Enemy);
+	}
+	while(getCellDistance(getCell(), getCell(summ))>5 && getMP()>0){
+		moveToward(summ);
+	}
+	useChip(CHIP_VACCINE, summ);
+	var apd = peutEtreAPorteeChip(getCell(), getCell(summ), CHIP_DRIP, getMP());
+	if (apd[0]){
+			moveTowardCell(apd[1]);
+			useChipOnCell(CHIP_DRIP, apd[2]);
+		}
+	useChip(CHIP_CURE,summ);
+	useChip(CHIP_BANDAGE,summ);
+}
+
+function a0(){valTest = 0;}
+function a1(){valTest += 1;}
+function a2(){valTest += 2;}
+function a3(){valTest += 3;}
+function a4(){valTest += 4;}
+function a5(){valTest += 5;}
+function a6(){valTest += 6;}
+function a7(){valTest += 7;}
+function a8(){valTest += 8;}
+function a9(){valTest += 9;}
+function a10(){valTest += 10;}
+function a11(){valTest += 20;}
+function a12(){valTest += 30;}
+function a13(){valTest += 40;}
+function a14(){valTest += 50;}
+function a15(){valTest += 60;}
+function a16(){valTest += 70;}
+function a17(){valTest += 80;}
+function a18(){valTest += 90;}
+function a19(){valTest += 100;}
+function a20(){valTest += 200;}
+function a21(){valTest += 300;}
+function a22(){valTest += 400;}
+function a23(){valTest += 500;}
+function a24(){valTest += 600;}
+function a25(){valTest += 700;}
+function a26(){valTest += 800;}
+function a27(){valTest += 900;}
+function a28(){valTest += 1000;}
+function a29(){valTest2 = 0;}
+function a30(){cellCible = getCell(myId);}
+function a31(){cellCible = getCell(enemyId);}
+function a32(){cellTest = getCell(enemyId);}
+function a33(){cellTest = getCell(myId);}
+function a34(){
+	var cell = getCellFromXY(getCellX(getCell())+1, getCellY(getCell()));
+	if(cell!=null && isEmptyCell(cell)) moveTowardCell(cell);
+	else debug("cell invalide");
+}
+function a35(){
+	var cell = getCellFromXY(getCellX(getCell())-1, getCellY(getCell()));
+	if(cell!=null && isEmptyCell(cell)) moveTowardCell(cell);
+	else debug("cell invalide");
+}
+function a36(){
+	var cell = getCellFromXY(getCellX(getCell()), getCellY(getCell())+1);
+	if(cell!=null && isEmptyCell(cell)) moveTowardCell(cell);
+	else debug("cell invalide");
+}
+function a37(){
+	var cell = getCellFromXY(getCellX(getCell()), getCellY(getCell())-1);
+	if(cell!=null && isEmptyCell(cell)) moveTowardCell(cell);
+	else debug("cell invalide");
+}
+function a38(){moveTowardCell(cellCible,valTest);}
+function a39(){moveAwayFromCell(cellCible,valTest);}
+function a40(){setWeapon(WEAPON_AXE);}
+function a41(){setWeapon(WEAPON_BAZOOKA);}
+function a42(){setWeapon(WEAPON_B_LASER);}
+function a43(){setWeapon(WEAPON_BROADSWORD);}
+function a44(){setWeapon(WEAPON_DARK_KATANA);}
+function a45(){setWeapon(WEAPON_DESTROYER);}
+function a46(){setWeapon(WEAPON_DOUBLE_GUN);}
+function a47(){setWeapon(WEAPON_ELECTRISOR);}
+function a48(){setWeapon(WEAPON_EXPLORER_RIFLE);}
+function a49(){setWeapon(WEAPON_FLAME_THROWER);}
+function a50(){setWeapon(WEAPON_GAZOR);}
+function a51(){setWeapon(WEAPON_GRENADE_LAUNCHER);}
+function a52(){setWeapon(WEAPON_ILLICIT_GRENADE_LAUNCHER);}
+function a53(){setWeapon(WEAPON_KATANA);}
+function a54(){setWeapon(WEAPON_LASER);}
+function a55(){setWeapon(WEAPON_LIGHTNINGER);}
+function a56(){setWeapon(WEAPON_MACHINE_GUN);}
+function a57(){setWeapon(WEAPON_MAGNUM);}
+function a58(){setWeapon(WEAPON_M_LASER);}
+function a59(){setWeapon(WEAPON_MYSTERIOUS_ELECTRISOR);}
+function a60(){setWeapon(WEAPON_NEUTRINO);}
+function a61(){setWeapon(WEAPON_PISTOL);}
+function a62(){setWeapon(WEAPON_REVOKED_M_LASER);}
+function a63(){setWeapon(WEAPON_RHINO);}
+function a64(){setWeapon(WEAPON_RIFLE);}
+function a65(){setWeapon(WEAPON_SHOTGUN);}
+function a66(){setWeapon(WEAPON_UNBRIDLED_GAZOR);}
+function a67(){setWeapon(WEAPON_J_LASER);}
+function a68(){moveTowardCell(cellapw);}
+function a69(){moveTowardCell(cellapc);}
+function a70(){cellCible = apw;}
+function a71(){cellCible = apc;}
+function a72(){cellTest = cellapw;}
+function a73(){cellTest = cellapc;}
+function a74(){weaponTest = WEAPON_AXE;}
+function a75(){weaponTest = WEAPON_BAZOOKA;}
+function a76(){weaponTest = WEAPON_B_LASER;}
+function a77(){weaponTest = WEAPON_BROADSWORD;}
+function a78(){weaponTest = WEAPON_DARK_KATANA;}
+function a79(){weaponTest = WEAPON_DESTROYER;}
+function a80(){weaponTest = WEAPON_DOUBLE_GUN;}
+function a81(){weaponTest = WEAPON_ELECTRISOR;}
+function a82(){weaponTest = WEAPON_EXPLORER_RIFLE;}
+function a83(){weaponTest = WEAPON_FLAME_THROWER;}
+function a84(){weaponTest = WEAPON_GAZOR;}
+function a85(){weaponTest = WEAPON_GRENADE_LAUNCHER;}
+function a86(){weaponTest = WEAPON_ILLICIT_GRENADE_LAUNCHER;}
+function a87(){weaponTest = WEAPON_KATANA;}
+function a88(){weaponTest = WEAPON_LASER;}
+function a89(){weaponTest = WEAPON_LIGHTNINGER;}
+function a90(){weaponTest = WEAPON_MACHINE_GUN;}
+function a91(){weaponTest = WEAPON_MAGNUM;}
+function a92(){weaponTest = WEAPON_M_LASER;}
+function a93(){weaponTest = WEAPON_MYSTERIOUS_ELECTRISOR;}
+function a94(){weaponTest = WEAPON_NEUTRINO;}
+function a95(){weaponTest = WEAPON_PISTOL;}
+function a96(){weaponTest = WEAPON_REVOKED_M_LASER;}
+function a97(){weaponTest = WEAPON_RHINO;}
+function a98(){weaponTest = WEAPON_RIFLE;}
+function a99(){weaponTest = WEAPON_SHOTGUN;}
+function a100(){weaponTest = WEAPON_UNBRIDLED_GAZOR;}
+function a101(){weaponTest = WEAPON_J_LASER;}
+function a102(){chipTest = CHIP_ACCELERATION;}
+function a103(){chipTest = CHIP_ADRENALINE;}
+function a104(){chipTest = CHIP_ALTERATION;}
+function a105(){chipTest = CHIP_ANTIDOTE;}
+function a106(){chipTest = CHIP_ARMOR;}
+function a107(){chipTest = CHIP_ARMORING;}
+function a108(){chipTest = CHIP_ARSENIC;}
+function a109(){chipTest = CHIP_BALL_AND_CHAIN;}
+function a110(){chipTest = CHIP_BANDAGE;}
+function a111(){chipTest = CHIP_BARK;}
+function a112(){chipTest = CHIP_BOXING_GLOVE;}
+function a113(){chipTest = CHIP_BRAINWASHING;}
+function a114(){chipTest = CHIP_BRAMBLE;}
+function a115(){chipTest = CHIP_BURNING;}
+function a116(){chipTest = CHIP_CARAPACE;}
+function a117(){chipTest = CHIP_COLLAR;}
+function a118(){chipTest = CHIP_COVETOUSNESS;}
+function a119(){chipTest = CHIP_COVID;}
+function a120(){chipTest = CHIP_CRUSHING;}
+function a121(){chipTest = CHIP_CURE;}
+function a122(){chipTest = CHIP_DESINTEGRATION;}
+function a123(){chipTest = CHIP_DEVIL_STRIKE;}
+function a124(){chipTest = CHIP_DOME;}
+function a125(){chipTest = CHIP_DOPING;}
+function a126(){chipTest = CHIP_DRIP;}
+function a127(){chipTest = CHIP_ELEVATION;}
+function a128(){chipTest = CHIP_FEROCITY;}
+function a129(){chipTest = CHIP_FERTILIZER;}
+function a130(){chipTest = CHIP_FIRE_BULB;}
+function a131(){chipTest = CHIP_FLAME;}
+function a132(){chipTest = CHIP_FLASH;}
+function a133(){chipTest = CHIP_FORTRESS;}
+function a134(){chipTest = CHIP_FRACTURE;}
+function a135(){chipTest = CHIP_GRAPPLE;}
+function a136(){chipTest = CHIP_HEALER_BULB;}
+function a137(){chipTest = CHIP_HELMET;}
+function a138(){chipTest = CHIP_ICE;}
+function a139(){chipTest = CHIP_ICEBERG;}
+function a140(){chipTest = CHIP_ICED_BULB;}
+function a141(){chipTest = CHIP_INVERSION;}
+function a142(){chipTest = CHIP_JUMP;}
+function a143(){chipTest = CHIP_KNOWLEDGE;}
+function a144(){chipTest = CHIP_LEATHER_BOOTS;}
+function a145(){chipTest = CHIP_LIBERATION;}
+function a146(){chipTest = CHIP_LIGHTNING;}
+function a147(){chipTest = CHIP_LIGHTNING_BULB;}
+function a148(){chipTest = CHIP_LOAM;}
+function a149(){chipTest = CHIP_MANUMISSION;}
+function a150(){chipTest = CHIP_METALLIC_BULB;}
+function a151(){chipTest = CHIP_METEORITE;}
+function a152(){chipTest = CHIP_MIRROR;}
+function a153(){chipTest = CHIP_MOTIVATION;}
+function a154(){chipTest = CHIP_MUTATION;}
+function a155(){chipTest = CHIP_PEBBLE;}
+function a156(){chipTest = CHIP_PLAGUE;}
+function a157(){chipTest = CHIP_PLASMA;}
+function a158(){chipTest = CHIP_PRECIPITATION;}
+function a159(){chipTest = CHIP_PROTEIN;}
+function a160(){chipTest = CHIP_PUNISHMENT;}
+function a161(){chipTest = CHIP_PUNY_BULB;}
+function a162(){chipTest = CHIP_RAGE;}
+function a163(){chipTest = CHIP_RAMPART;}
+function a164(){chipTest = CHIP_REFLEXES;}
+function a165(){chipTest = CHIP_REGENERATION;}
+function a166(){chipTest = CHIP_REMISSION;}
+function a167(){chipTest = CHIP_REPOTTING;}
+function a168(){chipTest = CHIP_RESURRECTION;}
+function a169(){chipTest = CHIP_ROCK;}
+function a170(){chipTest = CHIP_ROCKFALL;}
+function a171(){chipTest = CHIP_ROCKY_BULB;}
+function a172(){chipTest = CHIP_SAVANT_BULB;}
+function a173(){chipTest = CHIP_SERUM;}
+function a174(){chipTest = CHIP_SEVEN_LEAGUE_BOOTS;}
+function a175(){chipTest = CHIP_SHIELD;}
+function a176(){chipTest = CHIP_SHOCK;}
+function a177(){chipTest = CHIP_SLOW_DOWN;}
+function a178(){chipTest = CHIP_SOLIDIFICATION;}
+function a179(){chipTest = CHIP_SOPORIFIC;}
+function a180(){chipTest = CHIP_SPARK;}
+function a181(){chipTest = CHIP_STALACTITE;}
+function a182(){chipTest = CHIP_STEROID;}
+function a183(){chipTest = CHIP_STRETCHING;}
+function a184(){chipTest = CHIP_TACTICIAN_BULB;}
+function a185(){chipTest = CHIP_TELEPORTATION;}
+function a186(){chipTest = CHIP_THERAPY;}
+function a187(){chipTest = CHIP_THORN;}
+function a188(){chipTest = CHIP_TOXIN;}
+function a189(){chipTest = CHIP_TRANQUILIZER;}
+function a190(){chipTest = CHIP_TRANSMUTATION;}
+function a191(){chipTest = CHIP_VACCINE;}
+function a192(){chipTest = CHIP_VAMPIRIZATION;}
+function a193(){chipTest = CHIP_VENOM;}
+function a194(){chipTest = CHIP_WALL;}
+function a195(){chipTest = CHIP_WARM_UP;}
+function a196(){chipTest = CHIP_WHIP;}
+function a197(){chipTest = CHIP_WINGED_BOOTS;}
+function a198(){chipTest = CHIP_WIZARD_BULB;}
+function a199(){chipTest = CHIP_WIZARDRY;}
+function a200(){useWeaponOnCell(cellCible);}
+function a201(){useChipOnCell(chipTest, cellCible);}
+function a202(){valTest += getTP(myId);}
+function a203(){valTest += getTP(enemyId);}
+function a204(){valTest += getMP(myId);}
+function a205(){valTest += getMP(enemyId);}
+function a206(){valTest -= getWeaponCost(weaponTest);}
+function a207(){valTest -= getChipCost(chipTest);}
+function a208(){valTest2 = valTest;}
+function a209(){valTest = valTest2;}
+function a210(){valTest += maxDamageAllW(valTest2);}
+function a211(){valTest += maxDamageW(weaponTest);}
+function a212(){valTest += maxDamageC(chipTest);}
+function a213(){valTest += maxDamageAllWMe(valTest2);}
+function a214(){valTest += maxDamageWMe(weaponTest);}
+function a215(){valTest += maxDamageCMe(chipTest);}
+function a216(){valTest += getPoison(myId);}
+function a217(){valTest += getPoison(enemyId);}
+function a218(){cond1 = true;}
+function a219(){cond2 = true;}
+function a220(){cond3 = true;}
+function a221(){cond1 = false;}
+function a222(){cond2 = false;}
+function a223(){cond3 = false;}
+function a224(){usePBulbe();}
+function a225(){useRBulbe();}
+function a226(){useIBulbe();}
+function a227(){useHBulbe();}
+function a228(){valTest += getTotalLife(myId);}
+function a229(){valTest += getTotalLife(enemyId);}
+function a230(){valTest += getLife(myId);}
+function a231(){valTest += getLife(enemyId);}
+function a232(){valTest += getStrength(myId);}
+function a233(){valTest += getStrength(enemyId);}
+function a234(){valTest += getWisdom(myId);}
+function a235(){valTest += getWisdom(enemyId);}
+function a236(){valTest += getAgility(myId);}
+function a237(){valTest += getAgility(enemyId);}
+function a238(){valTest += getResistance(myId);}
+function a239(){valTest += getResistance(enemyId);}
+function a240(){valTest += getScience(myId);}
+function a241(){valTest += getScience(enemyId);}
+function a242(){valTest += getMagic(myId);}
+function a243(){valTest += getMagic(enemyId);}
+function a244(){valTest += getAbsoluteShield(myId);}
+function a245(){valTest += getAbsoluteShield(enemyId);}
+function a246(){valTest += getAbsoluteVulnerability(myId);}
+function a247(){valTest += getAbsoluteVulnerability(enemyId);}
+function a248(){valTest += getDamageReturn(myId);}
+function a249(){valTest += getDamageReturn(enemyId);}
+function a250(){fuite(valTest, accE);}
+function a251(){accE = getAccessible(getCell(enemyId), getMP(enemyId));}
+function a252(){valTest -= valTest2;}
+function a253(){valTest *= valTest2;}
+function a254(){valTest /= valTest2;}
+function a255(){valTest += getTotalTP(myId);}
+function a256(){valTest += getTotalTP(enemyId);}
+function a257(){valTest += getTotalMP(myId);}
+function a258(){valTest += getTotalMP(enemyId);}
+function a259(){weaponTest = null;}
+function a260(){weaponTest = getWeapon(myId);}
+function a261(){weaponTest = getWeapon(enemyId);}
+function a262(){debug("test ok");}
+
+
+
+ global tabActions = [a0,a1
+,a2
+,a3
+,a4
+,a5
+,a6
+,a7
+,a8
+,a9
+,a10
+,a11
+,a12
+,a13
+,a14
+,a15
+,a16
+,a17
+,a18
+,a19
+,a20
+,a21
+,a22
+,a23
+,a24
+,a25
+,a26
+,a27
+,a28
+,a29
+,a30
+,a31
+,a32
+,a33
+,a34
+,a35
+,a36
+,a37
+,a38
+,a39
+,a40
+,a41
+,a42
+,a43
+,a44
+,a45
+,a46
+,a47
+,a48
+,a49
+,a50
+,a51
+,a52
+,a53
+,a54
+,a55
+,a56
+,a57
+,a58
+,a59
+,a60
+,a61
+,a62
+,a63
+,a64
+,a65
+,a66
+,a67
+,a68
+,a69
+,a70
+,a71
+,a72
+,a73
+,a74
+,a75
+,a76
+,a77
+,a78
+,a79
+,a80
+,a81
+,a82
+,a83
+,a84
+,a85
+,a86
+,a87
+,a88
+,a89
+,a90
+,a91
+,a92
+,a93
+,a94
+,a95
+,a96
+,a97
+,a98
+,a99
+,a100
+,a101
+,a102
+,a103
+,a104
+,a105
+,a106
+,a107
+,a108
+,a109
+,a110
+,a111
+,a112
+,a113
+,a114
+,a115
+,a116
+,a117
+,a118
+,a119
+,a120
+,a121
+,a122
+,a123
+,a124
+,a125
+,a126
+,a127
+,a128
+,a129
+,a130
+,a131
+,a132
+,a133
+,a134
+,a135
+,a136
+,a137
+,a138
+,a139
+,a140
+,a141
+,a142
+,a143
+,a144
+,a145
+,a146
+,a147
+,a148
+,a149
+,a150
+,a151
+,a152
+,a153
+,a154
+,a155
+,a156
+,a157
+,a158
+,a159
+,a160
+,a161
+,a162
+,a163
+,a164
+,a165
+,a166
+,a167
+,a168
+,a169
+,a170
+,a171
+,a172
+,a173
+,a174
+,a175
+,a176
+,a177
+,a178
+,a179
+,a180
+,a181
+,a182
+,a183
+,a184
+,a185
+,a186
+,a187
+,a188
+,a189
+,a190
+,a191
+,a192
+,a193
+,a194
+,a195
+,a196
+,a197
+,a198
+,a199
+,a200
+,a201
+,a202
+,a203
+,a204
+,a205
+,a206
+,a207
+,a208
+,a209
+,a210
+,a211
+,a212
+,a213
+,a214
+,a215
+,a216
+,a217
+,a218
+,a219
+,a220
+,a221
+,a222
+,a223
+,a224
+,a225
+,a226
+,a227
+,a228
+,a229
+,a230
+,a231
+,a232
+,a233
+,a234
+,a235
+,a236
+,a237
+,a238
+,a239
+,a240
+,a241
+,a242
+,a243
+,a244
+,a245
+,a246
+,a247
+,a248
+,a249
+,a250
+,a251
+,a252
+,a253
+,a254
+,a255
+,a256
+,a257
+,a258
+,a259
+,a260
+,a261
+,a262/*
+,a263
+,a264
+,a265
+,a266
+,a267
+,a268
+,a269
+,a270
+,a271
+,a272
+,a273
+,a274
+,a275
+,a276
+,a277
+,a278
+,a279
+,a280
+,a281
+,a282
+,a283
+,a284
+,a285
+,a286
+,a287
+,a288
+,a289
+,a290
+,a291
+,a292
+,a293
+,a294
+,a295
+,a296
+,a297
+,a298
+,a299
+,a300
+,a301
+,a302
+,a303
+,a304
+,a305
+,a306
+,a307
+,a308
+,a309
+,a310
+,a311
+,a312
+,a313
+,a314
+,a315
+,a316
+,a317
+,a318
+,a319
+,a320
+,a321
+,a322
+,a323
+,a324
+,a325
+,a326
+,a327
+,a328
+,a329
+,a330
+,a331
+,a332
+,a333
+,a334
+,a335
+,a336
+,a337
+,a338
+,a339
+,a340
+,a341
+,a342
+,a343
+,a344
+,a345
+,a346
+,a347
+,a348
+,a349
+,a350
+,a351
+,a352
+,a353
+,a354
+,a355
+,a356
+,a357
+,a358
+,a359
+,a360
+,a361
+,a362
+,a363
+,a364
+,a365
+,a366
+,a367
+,a368
+,a369
+,a370
+,a371
+,a372
+,a373
+,a374
+,a375
+,a376
+,a377
+,a378
+,a379
+,a380
+,a381
+,a382
+,a383
+,a384
+,a385
+,a386
+,a387
+,a388
+,a389
+,a390
+,a391
+,a392
+,a393
+,a394
+,a395
+,a396
+,a397
+,a398
+,a399
+,a400
+,a401
+,a402
+,a403
+,a404
+,a405
+,a406
+,a407
+,a408
+,a409
+,a410
+,a411
+,a412
+,a413
+,a414
+,a415
+,a416
+,a417
+,a418
+,a419
+,a420
+,a421
+,a422
+,a423
+,a424
+,a425
+,a426
+,a427
+,a428
+,a429
+,a430
+,a431
+,a432
+,a433
+,a434
+,a435
+,a436
+,a437
+,a438
+,a439
+,a440
+,a441
+,a442
+,a443
+,a444
+,a445
+,a446
+,a447
+,a448
+,a449
+,a450
+,a451
+,a452
+,a453
+,a454
+,a455
+,a456
+,a457
+,a458
+,a459
+,a460
+,a461
+,a462
+,a463
+,a464
+,a465
+,a466
+,a467
+,a468
+,a469
+,a470
+,a471
+,a472
+,a473
+,a474
+,a475
+,a476
+,a477
+,a478
+,a479
+,a480
+,a481
+,a482
+,a483
+,a484
+,a485
+,a486
+,a487
+,a488
+,a489
+,a490
+,a491
+,a492
+,a493
+,a494
+,a495
+,a496
+,a497
+,a498
+,a499
+,a500
+,a501*/
+];
+/** TER 2/ADN **/
+
+accE = getAccessible(getCell(enemyId), getMP(enemyId)); //nécessaire en début de tour
+
+var CDT = true; //valeur de la Conjonction De Tests. 
+var CDO = false; //Conjonction De Or (dès qu'un test dans la conjontion est vrai, CDO = true)
+var type; //type de gène (Test,Action,Prioritaire,Or,Not,Q ornot,action Finale, While,M fin while)
+var gene;
+var test,action,wh;
+
+for (var i = 0; i < length(ADN); i+=4) {
+	type = charAt(ADN,i);
+	gene = substring(ADN, i+1,3);
+	if (type=='P'){
+		action = tabActions[number(gene)];
+		action();
+		debug(type);
+		debug("Prioritaire : "+gene);
+	}
+	else if (CDT) {
+		if (type=='A'||type=='F'){
+			action = tabActions[number(gene)];
+			action();
+			debug(type);
+			debug("Action : "+gene);
+		}
+		else if (type=='T'){
+			test = tabTests[number(gene)];
+			if(typeOf(test)==TYPE_BOOLEAN) CDT = test;
+			else CDT = test();
+			debug(type);
+			debug("test : "+gene+" = "+CDT);
+		}
+		else if (type=='O'){
+			if (!CDO){
+				test = tabTests[number(gene)];
+				if(typeOf(test)==TYPE_BOOLEAN) CDO = test;
+				else CDO = test();
+				debug(type);
+			}
+			if (charAt(ADN,i+4)!='O' && charAt(ADN,i+4)!='Q') {
+				if (!CDO) {
+					CDT = false;
+				}
+				CDO = false;
+			}
+		}
+		else if (type=='N'){
+			test = tabTests[number(gene)];
+			if(typeOf(test)==TYPE_BOOLEAN) CDT = !test;
+			else CDT = !test();
+			debug(type);
+			debug("test : "+gene+" = "+CDT);
+		}
+		else if (type=='Q'){
+			if (!CDO){
+				test = tabTests[number(gene)];
+				if(typeOf(test)==TYPE_BOOLEAN) CDO = !test;
+				else CDO = !test();
+				debug(type);
+			}
+			if (charAt(ADN,i+4)!='O' && charAt(ADN,i+4)!='Q') {
+				if (!CDO) {
+					CDT = false;
+				}
+				CDO = false;
+			}
+		}
+		else if (type=='W') {
+			wh=i-4;
+			test = tabTests[number(gene)];
+			if(typeOf(test)==TYPE_BOOLEAN) CDT = test;
+			else CDT = test();
+			debug(type);
+		}
+		else if (type=='M'){
+			action = tabActions[number(gene)];
+			action();
+			i=wh;
+			debug(type);
+		}
+	}
+	else if (type=='F'||type=='M') CDT = true; // on skip tous les tests et actions tant que la var 'CDT' est false. Après la dernière action à la suite, on remet la var 'CDT' à true.
+	/*
+	debug("valtest : "+valTest);
+	debug("chiptest : "+chipTest);
+	debug("celltest : "+cellTest);
+	debug("cellcible : "+cellCible);
+	// */
+}

@@ -1,0 +1,121 @@
+{
+    "farmers": [
+        {
+            "id": 1,
+            "name": "Joueur 1",
+            "country": "fr"
+        },
+        {
+            "id": 2,
+            "name": "Joueur 2",
+            "country": "fr"
+        }
+    ],
+    "teams": [
+        {
+            "id": 1,
+            "name": "j1"
+        },
+        {
+            "id": 2,
+            "name": "j2"
+        }
+    ],
+    "entities": [
+        [
+            {
+                "id": 1,
+                "ai": "test/ai/vide.leek",
+                "name": "J1",
+                "type": 1,
+                "farmer": 1,
+                "team": 1,
+                "level": 301,
+                "life": 2000,
+                "strength": 250,
+                "wisdom": 255,
+                "magic": 500,
+                "tp": 21,
+                "mp": 6,
+                "cell": 53,
+                "weapons": [
+                    37,
+                    40,
+                    46,
+                    108
+                ],
+                "chips": [
+                    67,
+                    11,
+                    35,
+                    20,
+                    22,
+                    15,
+                    155,
+                    96,
+                    16,
+                    156,
+                    97,
+                    98,
+                    94,
+                    76,
+                    77,
+                    75,
+                    110
+                ]
+            }
+        ],
+        [
+            {
+                "id": 2,
+                "ai": "test/ai/vide.leek",
+                "name": "J2",
+                "type": 1,
+                "farmer": 2,
+                "team": 2,
+                "level": 301,
+                "life": 2000,
+                "strength": 250,
+                "wisdom": 255,
+                "magic": 500,
+                "tp": 21,
+                "mp": 6,
+                "cell": 560,
+                "weapons": [
+                    37,
+                    40,
+                    46,
+                    108
+                ],
+                "chips": [
+                    67,
+                    11,
+                    35,
+                    20,
+                    22,
+                    15,
+                    155,
+                    96,
+                    16,
+                    156,
+                    97,
+                    98,
+                    94,
+                    76,
+                    77,
+                    75,
+                    110
+                ]
+            }
+        ]
+    ],
+    "map": {
+        "width": 17,
+        "height": 17,
+        "type": 3,
+        "obstacles": []
+    },
+    "random_seed": 4695137,
+    "max_turns": 64,
+    "max_operations_per_entity": 20000000
+}
